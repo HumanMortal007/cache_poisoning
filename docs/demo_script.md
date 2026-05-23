@@ -3,8 +3,9 @@
 ## Pre-requisites (Before you start)
 1. Have Docker Desktop running.
 2. Have the vulnerable environment running (`docker-compose up -d`).
-3. Have Python `venv` activated in two terminal windows (Terminal 1 for exploit, Terminal 2 for validation).
-4. Have a browser window open to `http://localhost:8080`.
+3. If using Web Mode: Run `python control_panel.py` and open `http://localhost:9090` in your browser.
+4. If using Terminal Mode: Have Python `venv` activated in two terminal windows.
+5. Have a browser window open to `http://localhost:8080`.
 
 ---
 
@@ -56,11 +57,11 @@ Second, we implement strict header validation. We explicitly define `server_name
 
 ## Minute 5: Validation, Impact & Future Work
 *(Speaker: Team Member 5)*
-**Action:** Apply mitigation (copy secure config over vulnerable and restart docker) and run validation script in Terminal 2.
+**Action:** Apply mitigation (copy secure config over vulnerable and restart docker) and run validation script. If using Web Mode, just click the "Apply Secure Config" and "Run Validation Test" buttons on the Dashboard.
 
 **Script:**
 "Let's validate our fix."
-*(Run command to swap configs: `Copy-Item .\nginx\nginx_secure.conf -Destination .\nginx\nginx_vulnerable.conf -Force` then `docker-compose restart nginx`)*
-*(Run command: `python tests/validate.py -t http://localhost:8080 -m evil-hacker.com`)*
+*(Run command to swap configs: `Copy-Item .\nginx\nginx_secure_original.conf -Destination .\nginx\nginx_vulnerable.conf -Force` then `docker-compose restart nginx`, OR use Web Dashboard)*
+*(Run command: `python tests/validate.py -t http://localhost:8080 -m test-hacker.com`, OR use Web Dashboard)*
 "Our automated validation test confirms the server is now secure. The cache poisoning fails, and the victim receives safe content.
 This aligns with MITRE ATT&CK T1584, Compromise Infrastructure. While this lab is a simplified model, this exact misconfiguration affects major CDNs and enterprise deployments globally. For future work, we would integrate Web Application Firewall (WAF) signatures to detect anomalous Host headers before they even reach the caching layer. Thank you."

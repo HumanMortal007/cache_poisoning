@@ -57,7 +57,33 @@ The vulnerable application is now accessible at `http://localhost:8080`.
 
 ## Execution Guide
 
-### 1. Verify Normal Behavior
+You can run this demo in two ways: **Web Mode (Recommended for presentations)** or **Terminal Mode**.
+
+---
+
+### 🟢 Method A: Web Mode (Presenter Dashboard)
+
+We have included a dedicated Presenter Dashboard to make running the demo incredibly smooth during a hackathon.
+
+1. **Start the Control Panel:**
+   Ensure your virtual environment is active, then run:
+   ```powershell
+   python control_panel.py
+   ```
+2. **Open the Dashboard:**
+   Open your browser and navigate to `http://localhost:9090`.
+3. **Run the Demo:**
+   - Click **Open Victim Browser** to open `http://localhost:8080` in a new tab. Note the normal tracker URL.
+   - Go back to the dashboard and click **Run Cache Poisoning Exploit**. Watch the terminal output in the browser!
+   - Refresh the Victim Browser (`http://localhost:8080`) to see the stunning red UI indicating the cache is poisoned!
+   - Click **Apply Secure Config & Restart Nginx** to deploy the mitigation.
+   - Click **Run Validation Test** to prove the server is now secure.
+
+---
+
+### 🔴 Method B: Terminal Mode
+
+#### 1. Verify Normal Behavior
 Open a browser and navigate to `http://localhost:8080`. You should see the CDN Insights Dashboard. Notice the "Detected Host" is `localhost:8080` and the script source points to `http://localhost:8080/assets/tracker.js`.
 
 ### 2. Run the Exploit
