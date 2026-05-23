@@ -32,18 +32,18 @@ HTML_TEMPLATE = """
             background-color: var(--bg-color); 
             color: var(--text-main); 
             margin: 0; 
-            padding: 30px; 
+            padding: 20px; 
         }
 
         .container { 
-            max-width: 1000px; 
+            max-width: 1200px; 
             margin: 0 auto; 
         }
 
         h1 { 
             text-align: center; 
             color: var(--accent-primary);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-weight: 800;
         }
 
@@ -55,7 +55,7 @@ HTML_TEMPLATE = """
 
         .panel {
             background: var(--surface-color);
-            padding: 25px;
+            padding: 20px;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.1);
         }
@@ -72,7 +72,7 @@ HTML_TEMPLATE = """
             display: block;
             width: 100%;
             padding: 12px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             border: none;
             border-radius: 8px;
             font-family: 'Outfit', sans-serif;
@@ -91,18 +91,38 @@ HTML_TEMPLATE = """
         .btn-reset { background-color: var(--accent-warning); }
         .btn-clear { background-color: var(--accent-info); }
 
+        .terminals-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .terminal-wrapper h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent-info);
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .pulse-dot {
+            height: 10px; width: 10px; background-color: var(--accent-danger); border-radius: 50%; display: inline-block;
+            animation: pulse 1.5s infinite; margin-right: 5px;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
         .terminal {
             background-color: #000;
             border-radius: 8px;
             padding: 15px;
-            height: 400px;
+            height: 350px;
             overflow-y: auto;
             font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #a8b2d1;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
             border: 1px solid #333;
-            margin-top: 20px;
         }
         
         .terminal-line { margin-bottom: 4px; white-space: pre-wrap; word-break: break-all; }
@@ -110,6 +130,7 @@ HTML_TEMPLATE = """
         .color-red { color: #ef4444; }
         .color-yellow { color: #f59e0b; }
         .color-cyan { color: #06b6d4; }
+        .color-purple { color: #a855f7; }
     </style>
 </head>
 <body>
@@ -128,12 +149,24 @@ HTML_TEMPLATE = """
                 <h2>Phase 2: Mitigation</h2>
                 <button class="btn btn-mitigate" onclick="runCommand('/api/apply_secure')">🛡️ 4. Apply Secure Config & Restart Nginx</button>
                 <button class="btn btn-reset" onclick="runCommand('/api/run_validate')">✅ 5. Run Validation Test</button>
-                <button class="btn btn-warning" onclick="runCommand('/api/apply_vulnerable')" style="background-color: #64748b; margin-top: 30px;">⏪ Reset to Vulnerable Config</button>
+                <button class="btn btn-warning" onclick="runCommand('/api/apply_vulnerable')" style="background-color: #64748b; margin-top: 15px;">⏪ Reset to Vulnerable Config</button>
             </div>
         </div>
 
-        <div class="terminal" id="terminal-output">
-            <div class="terminal-line color-cyan">System initialized. Waiting for presenter commands...</div>
+        <div class="terminals-container">
+            <div class="terminal-wrapper">
+                <h3>Command Output</h3>
+                <div class="terminal" id="terminal-output">
+                    <div class="terminal-line color-cyan">System initialized. Waiting for presenter commands...</div>
+                </div>
+            </div>
+            
+            <div class="terminal-wrapper">
+                <h3><span><span class="pulse-dot"></span> Live Nginx Access Logs (Proof)</span></h3>
+                <div class="terminal" id="nginx-logs-output">
+                    <div class="terminal-line color-cyan">Connecting to Docker logs...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -143,7 +176,6 @@ HTML_TEMPLATE = """
             const line = document.createElement('div');
             line.className = 'terminal-line';
             
-            // Simple ANSI color parsing for web terminal
             let formatted = text
                 .replace(/\\[0m/g, '</span>')
                 .replace(/\\[32m/g, '<span class="color-green">')
@@ -174,6 +206,41 @@ HTML_TEMPLATE = """
                 appendOutput(`Failed to execute request: ${err}`, true);
             }
         }
+
+        // Poll Nginx logs every 2 seconds
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const data = await response.json();
+                if (data.output) {
+                    const terminal = document.getElementById('nginx-logs-output');
+                    // Format log lines to highlight malicious hosts and Cache HITs
+                    const formattedLogs = data.output.split('\\n').map(line => {
+                        if (!line.trim()) return '';
+                        let formatted = line;
+                        if (line.includes('evil-hacker.com') || line.includes('test-hacker.com')) {
+                            formatted = `<span class="color-red">${formatted}</span>`;
+                        } else if (line.includes('Cache Status: "HIT"')) {
+                            formatted = formatted.replace('Cache Status: "HIT"', 'Cache Status: "<span class="color-green">HIT</span>"');
+                        } else if (line.includes(' 444 ')) {
+                            formatted = `<span class="color-purple">${formatted} (BLOCKED)</span>`;
+                        }
+                        return `<div class="terminal-line">${formatted}</div>`;
+                    }).join('');
+                    
+                    // Only update if changed to avoid scrolling jank if possible
+                    if (terminal.innerHTML !== formattedLogs) {
+                        terminal.innerHTML = formattedLogs;
+                        terminal.scrollTop = terminal.scrollHeight;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch logs:", err);
+            }
+        }
+
+        setInterval(fetchLogs, 2000);
+        fetchLogs();
     </script>
 </body>
 </html>
@@ -226,6 +293,11 @@ def apply_secure():
 def apply_vulnerable():
     cmd = 'copy nginx\\nginx_vulnerable_original.conf nginx\\nginx_vulnerable.conf && docker-compose restart nginx'
     return execute_cmd(cmd, success_msg="Vulnerable configuration applied and Nginx restarted.")
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    # Read the last 15 lines from the Nginx access log inside the container
+    return execute_cmd("docker exec cdn_nginx_edge tail -n 15 /var/log/nginx/access.log")
 
 if __name__ == '__main__':
     print("[+] Starting Presenter Dashboard on http://localhost:9090")
