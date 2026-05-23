@@ -185,11 +185,11 @@ HTML_TEMPLATE = """
             line.className = 'terminal-line';
             
             let formatted = text
-                .replace(/\\[0m/g, '</span>')
-                .replace(/\\[32m/g, '<span class="color-green">')
-                .replace(/\\[31m/g, '<span class="color-red">')
-                .replace(/\\[33m/g, '<span class="color-yellow">')
-                .replace(/\\[36m/g, '<span class="color-cyan">');
+                .replace(/\\x1b\\[0m/g, '</span>')
+                .replace(/\\x1b\\[32m/g, '<span class="color-green">')
+                .replace(/\\x1b\\[31m/g, '<span class="color-red">')
+                .replace(/\\x1b\\[33m/g, '<span class="color-yellow">')
+                .replace(/\\x1b\\[36m/g, '<span class="color-cyan">');
                 
             line.innerHTML = formatted;
             if (isError) line.classList.add('color-red');
@@ -370,3 +370,4 @@ def get_logs():
 if __name__ == '__main__':
     print("[+] Starting Presenter Dashboard on http://localhost:9090")
     app.run(host='0.0.0.0', port=9090, debug=True)
+
