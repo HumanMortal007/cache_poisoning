@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  flask_app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: cdn_flask_backend
+    restart: unless-stopped
+    expose:
+      - "5000"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - cdn_network
+
+  nginx:
+    image: nginx:latest
+    container_name: cdn_nginx_edge
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Use vulnerable config by default for the demo
+      - ./nginx/nginx_vulnerable.conf:/etc/nginx/nginx.conf:ro
+      - ./logs:/var/log/nginx
+    depends_on:
+      - flask_app
+    networks:
+      - cdn_network
+
+networks:
+  cdn_network:
+    driver: bridge
