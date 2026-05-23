@@ -15,6 +15,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hackathon Presenter Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -168,6 +169,13 @@ HTML_TEMPLATE = """
                 </div>
             </div>
         </div>
+
+        <div class="panel" style="margin-top: 20px;">
+            <h2>📊 SOC Traffic Analytics (WAF & Cache Status)</h2>
+            <div style="height: 250px; width: 100%;">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -207,6 +215,41 @@ HTML_TEMPLATE = """
             }
         }
 
+        // Initialize Chart.js
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Normal Requests (200)', 'Cache Hits', 'Blocked Attacks (444)'],
+                datasets: [{
+                    label: 'Request Events (Last 50 Logs)',
+                    data: [0, 0, 0],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)', // Blue
+                        'rgba(16, 185, 129, 0.7)', // Green
+                        'rgba(239, 68, 68, 0.7)'   // Red
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(239, 68, 68, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8', stepSize: 1 } },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#f8fafc' } }
+                }
+            }
+        });
+
         // Poll Nginx logs every 2 seconds
         async function fetchLogs() {
             try {
@@ -232,6 +275,12 @@ HTML_TEMPLATE = """
                     if (terminal.innerHTML !== formattedLogs) {
                         terminal.innerHTML = formattedLogs;
                         terminal.scrollTop = terminal.scrollHeight;
+                    }
+
+                    // Update Chart Data if stats are provided
+                    if (data.stats) {
+                        trafficChart.data.datasets[0].data = [data.stats.normal, data.stats.hits, data.stats.blocked];
+                        trafficChart.update();
                     }
                 }
             } catch (err) {
@@ -296,8 +345,27 @@ def apply_vulnerable():
 
 @app.route('/api/logs', methods=['GET'])
 def get_logs():
-    # Read the last 15 lines from the Nginx access log inside the container
-    return execute_cmd("docker exec cdn_nginx_edge tail -n 15 /var/log/nginx/access.log")
+    # Read the last 50 lines from the Nginx access log inside the container
+    # We return 15 lines for the terminal, but use all 50 for stats
+    result = execute_cmd("docker exec cdn_nginx_edge tail -n 50 /var/log/nginx/access.log")
+    
+    # Parse stats from the output
+    data = result.get_json()
+    if 'output' in data:
+        lines = data['output'].strip().split('\n')
+        # We only want to show the last 15 lines in the terminal view
+        terminal_lines = '\n'.join(lines[-15:])
+        
+        # Calculate stats for the chart from the 50 lines
+        normal = sum(1 for line in lines if '" 200 ' in line and 'api/health' not in line)
+        hits = sum(1 for line in lines if 'Cache Status: "HIT"' in line)
+        blocked = sum(1 for line in lines if ' 444 ' in line)
+        
+        return jsonify({
+            "output": terminal_lines,
+            "stats": {"normal": normal, "hits": hits, "blocked": blocked}
+        })
+    return result
 
 if __name__ == '__main__':
     print("[+] Starting Presenter Dashboard on http://localhost:9090")

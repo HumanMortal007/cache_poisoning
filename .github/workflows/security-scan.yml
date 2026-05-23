@@ -1,0 +1,57 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sast_scan:
+    name: SAST (Static Analysis)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Bandit for SAST
+        run: pip install bandit
+        
+      - name: Run Bandit Security Scan
+        run: bandit -r app/ exploit/ tests/ -lll -i
+
+  container_scan:
+    name: Container Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker Image
+        run: docker build -t cache-poison-app:latest .
+        
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'cache-poison-app:latest'
+          format: 'table'
+          exit-code: '0' # Set to 1 in production to fail the build on criticals
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  infrastructure_scan:
+    name: IaC Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run Checkov on Terraform
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          quiet: true

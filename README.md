@@ -19,6 +19,13 @@ In this specific scenario, the Nginx cache uses only the URL path (`$uri`) as th
 ## Real-World Relevance
 Modern web architectures heavily rely on Content Delivery Networks (CDNs) and reverse proxies (like Nginx, Varnish, Fastly, Cloudflare) to improve performance. Misconfigurations in how these layers define cache keys relative to how backend applications handle HTTP headers (especially the often-overlooked `Host` header) frequently lead to cache poisoning vulnerabilities in production environments.
 
+## Enterprise DevSecOps Features
+To demonstrate an understanding of industry standards, this repository includes several enterprise-grade features beyond the core exploit:
+- **Cloud-Native IaC:** A `terraform/` directory containing AWS CloudFront configurations demonstrating how to apply this mitigation to cloud infrastructure.
+- **CI/CD Security Pipelines:** GitHub Actions (`.github/workflows`) configured for Static Application Security Testing (SAST) using Bandit and container vulnerability scanning using Trivy.
+- **SOC SIEM Dashboard:** A web-based Presenter Dashboard that simulates a Security Operations Center, featuring live Nginx access logs and real-time Chart.js traffic analytics to visualize blocked attacks.
+- **Enterprise Build Tools:** A `Makefile` for streamlined environment setup and execution.
+
 ## Setup Instructions
 
 ### Prerequisites
