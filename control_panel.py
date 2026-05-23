@@ -179,7 +179,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def execute_cmd(cmd, cwd=BASE_DIR):
+def execute_cmd(cmd, cwd=BASE_DIR, success_msg=""):
     """Helper to run shell commands and return output"""
     try:
         result = subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True, timeout=15)
@@ -187,6 +187,11 @@ def execute_cmd(cmd, cwd=BASE_DIR):
         output = result.stdout
         if result.stderr:
             output += f"\n[STDERR]\n{result.stderr}"
+        
+        # Add success message if the command succeeded
+        if result.returncode == 0 and success_msg:
+            output += f"\n\n[SUCCESS] {success_msg}"
+            
         return jsonify({"output": output})
     except Exception as e:
         return jsonify({"error": str(e)})
@@ -197,30 +202,30 @@ def index():
 
 @app.route('/api/clear_cache', methods=['POST'])
 def clear_cache():
-    return execute_cmd("docker exec cdn_nginx_edge rm -rf /var/cache/nginx/my_cache && docker exec cdn_nginx_edge nginx -s reload")
+    return execute_cmd("docker exec cdn_nginx_edge rm -rf /var/cache/nginx/my_cache && docker exec cdn_nginx_edge nginx -s reload", success_msg="Cache cleared successfully!")
 
 @app.route('/api/run_exploit', methods=['POST'])
 def run_exploit():
     python_exec = os.path.join(BASE_DIR, 'venv', 'Scripts', 'python.exe')
     script_path = os.path.join(BASE_DIR, 'exploit', 'exploit.py')
     # Use unbuffered python to get output nicely if we were streaming, but here we just wait
-    return execute_cmd(f"{python_exec} {script_path} -t http://localhost:8080 -m evil-hacker.com")
+    return execute_cmd(f"{python_exec} {script_path} -t http://localhost:8080 -m evil-hacker.com", success_msg="Exploit script execution finished.")
 
 @app.route('/api/run_validate', methods=['POST'])
 def run_validate():
     python_exec = os.path.join(BASE_DIR, 'venv', 'Scripts', 'python.exe')
     script_path = os.path.join(BASE_DIR, 'tests', 'validate.py')
-    return execute_cmd(f"{python_exec} {script_path} -t http://localhost:8080 -m test-hacker.com")
+    return execute_cmd(f"{python_exec} {script_path} -t http://localhost:8080 -m test-hacker.com", success_msg="Validation script execution finished.")
 
 @app.route('/api/apply_secure', methods=['POST'])
 def apply_secure():
     cmd = 'copy nginx\\nginx_secure_original.conf nginx\\nginx_vulnerable.conf && docker-compose restart nginx'
-    return execute_cmd(cmd)
+    return execute_cmd(cmd, success_msg="Secure configuration applied and Nginx restarted.")
 
 @app.route('/api/apply_vulnerable', methods=['POST'])
 def apply_vulnerable():
     cmd = 'copy nginx\\nginx_vulnerable_original.conf nginx\\nginx_vulnerable.conf && docker-compose restart nginx'
-    return execute_cmd(cmd)
+    return execute_cmd(cmd, success_msg="Vulnerable configuration applied and Nginx restarted.")
 
 if __name__ == '__main__':
     print("[+] Starting Presenter Dashboard on http://localhost:9090")
